@@ -54,7 +54,7 @@ extension MusicNote: MusicStaffViewElement {
     }
     
     public var accessoryElements: [MusicStaffViewAccessory]? {
-        if self.accidental != .none {
+        if self.accidental != .natural {
             let noteAccidental = MusicNoteAccidental(name: self.name, accidental: self.accidental, octave: self.octave, placement: .leading)
             return [noteAccidental]
         }
