@@ -18,6 +18,28 @@ public typealias ViewType = NSView
 public typealias ColorType = NSColor
 #endif
 
+fileprivate struct AccessoryElementWithParent: MusicStaffViewElement {
+    func path(in frame: CGRect) -> CGPath {
+        accessory.path(in: frame)
+    }
+    
+    var aspectRatio: CGFloat { accessory.aspectRatio }
+    var heightInStaffSpace: CGFloat { accessory.heightInStaffSpace }
+    var anchorPoint: CGPoint { accessory.anchorPoint }
+    
+    var parent: any MusicStaffViewElement
+    var accessory: MusicStaffViewAccessory
+    
+    init(parent: any MusicStaffViewElement, accessory: MusicStaffViewAccessory) {
+        self.parent = parent
+        self.accessory = accessory
+    }
+    
+    func offset(in clef: MusicClef) -> Int {
+        accessory.offset(in: clef) + parent.offset(in: clef)
+    }
+}
+
 @IBDesignable open class MusicStaffView: ViewType {
     ///Instructs the `MusicStaffView` to draw notes using the spacing set in `preferredHorizontalSpacing` or to fill all available space by dividing the space for notes into equal parts.
     ///
@@ -214,7 +236,13 @@ public typealias ColorType = NSColor
                 continue
             }
             
-
+            /*
+             2.13.24
+             The major issue with this version of accessories is that they do not know where to draw in the vertical space.
+             Unfortunately, the protocol-based design of elements causes accessories to not understand where they are in relation to their parent elements. And because the element protocol is designed to be adopted by already-existing musical elements (e.g. notes, accidentals, etc), there is no mechanism to store any extra information, such as parent elements.
+             
+             Previously, accidentals were all drawn as the notes were drawn, so this was less of an issue. Now, the layers are set up and the accessories are drawn in order. Perhaps accessories need a concrete element to store that extra information.
+             */
                 
             //Iterate through each accessory and figure out how to place it
             for accessory in element.accessoryElements {
@@ -228,7 +256,8 @@ public typealias ColorType = NSColor
                 //Leading elements precede their parent elements. They require an static shim after themselves.
                 //Note that shims are not flexible by default
                 case .leading:
-                    elements.append(accessory)
+                    let finalAccessory = AccessoryElementWithParent(parent: element, accessory: accessory)
+                    elements.append(finalAccessory)
                     let shim = MusicStaffViewShim(width: preferredHorizontalSpacing, spaceWidth: spaceWidth)
                     elements.append(shim)
                     
@@ -480,6 +509,4 @@ public typealias ColorType = NSColor
     override open func prepareForInterfaceBuilder() {
         self.setupLayers()
     }
-    
-
 }
